@@ -1,0 +1,1954 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gerador de Propostas</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+/* ═══════════════════════════════════════════════════════
+   FONTES
+   ═══════════════════════════════════════════════════════ */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Barlow:wght@400;500;600;700;800;900&display=swap');
+
+/* ═══════════════════════════════════════════════════════
+   VARIÁVEIS DE COR (TEMA)
+   ═══════════════════════════════════════════════════════ */
+:root {
+  --bg:      #f4f1ed;
+  --surface: #fff;
+  --border:  #ddd5c8;
+  --dark:    #18140f;
+  --green:   #1e6641;
+  --orange:  #c45b00;
+  --red:     #b52020;
+  --blue:    #1a4d8f;
+  --muted:   #8c8070;
+  --green-bg:#eaf5ee;
+}
+
+/* ═══════════════════════════════════════════════════════
+   RESET & BASE
+   ═══════════════════════════════════════════════════════ */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  font-family: 'Barlow', sans-serif;
+  color: var(--dark);
+  min-height: 100vh;
+  padding: 32px 16px 64px;
+}
+
+.wrap { max-width: 980px; margin: 0 auto; }
+
+/* ═══════════════════════════════════════════════════════
+   HEADER
+   ═══════════════════════════════════════════════════════ */
+.hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-bottom: 18px; border-bottom: 2px solid var(--dark); margin-bottom: 22px;
+}
+.hdr-left { display: flex; align-items: center; gap: 14px; }
+.hdr-icon {
+  width: 44px; height: 44px; background: var(--dark); border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; font-size: 20px;
+}
+.hdr h1 { font-size: 21px; font-weight: 800; line-height: 1.1; }
+.hdr p { font-size: 11px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; margin-top: 3px; letter-spacing: 0.5px; }
+
+.badge-alt {
+  font-size: 9px; background: #e8f4e8; color: var(--green);
+  padding: 2px 8px; border-radius: 10px; margin-left: 4px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SEÇÃO (card genérico)
+   ═══════════════════════════════════════════════════════ */
+.section {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; margin-bottom: 14px; overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+}
+.section.mb-0 { margin-bottom: 0; }
+.sec-head {
+  padding: 12px 18px; border-bottom: 1px solid var(--border);
+  background: var(--bg); display: flex; align-items: center; justify-content: space-between;
+}
+.sec-title {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: 2px; color: var(--muted); font-weight: 700;
+}
+.sec-num {
+  width: 22px; height: 22px; background: var(--dark); color: #fff; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; font-family: 'IBM Plex Mono', monospace;
+}
+
+/* ═══════════════════════════════════════════════════════
+   CAMPOS DE FORMULÁRIO
+   ═══════════════════════════════════════════════════════ */
+.field label {
+  display: block; font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; color: var(--muted); letter-spacing: 1px; margin-bottom: 5px;
+}
+.field input {
+  width: 100%; border: 1px solid var(--border); background: var(--bg); border-radius: 6px;
+  padding: 9px 12px; font-family: 'Barlow', sans-serif;
+  font-size: 14px; font-weight: 600; color: var(--dark); outline: none;
+}
+.field input:focus { border-color: var(--dark); }
+.field-margem input { font-size: 18px; font-weight: 800; color: var(--green); }
+
+.grid-cotacao {
+  display: grid; grid-template-columns: 1fr 1fr 1fr 140px 140px;
+  gap: 12px; padding: 16px 18px;
+}
+
+/* ── Protheus ── */
+.border-top { border-top: 1px solid var(--border); }
+.protheus-trigger {
+  padding: 8px 18px; cursor: pointer;
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+  color: var(--muted); letter-spacing: 2px;
+  display: flex; align-items: center; gap: 8px; user-select: none;
+}
+.grid-protheus {
+  display: none; grid-template-columns: repeat(4, 1fr) repeat(3, 120px);
+  gap: 10px; padding: 10px 18px 14px; background: #fafaf8;
+}
+
+/* ═══════════════════════════════════════════════════════
+   LAYOUT GRID PRINCIPAL (pedido + fornecedor)
+   ═══════════════════════════════════════════════════════ */
+.grid-main {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 14px; margin-bottom: 14px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   TABS (DIGITAR / UPLOAD)
+   ═══════════════════════════════════════════════════════ */
+.tabs { display: flex; border-bottom: 1px solid var(--border); }
+.tab {
+  flex: 1; padding: 10px; border: none; background: var(--bg);
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 700;
+  letter-spacing: 1px; cursor: pointer; transition: all .15s;
+  border-bottom: 2px solid transparent; color: var(--muted);
+}
+.tab.active { background: var(--surface); border-bottom-color: var(--dark); color: var(--dark); }
+
+textarea {
+  width: 100%; padding: 16px 18px; border: none; outline: none;
+  font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 1.7;
+  color: var(--dark); background: var(--surface); resize: none; height: 200px;
+}
+textarea::placeholder { color: var(--muted); }
+
+/* ═══════════════════════════════════════════════════════
+   UPLOAD (drag & drop)
+   ═══════════════════════════════════════════════════════ */
+.upload-zone {
+  margin: 14px; border: 2px dashed var(--border); border-radius: 10px;
+  padding: 24px; text-align: center; cursor: pointer; transition: all .2s;
+}
+.upload-zone:hover, .upload-zone.drag { background: #ede9e3; border-color: var(--dark); }
+.upload-zone .ico { font-size: 30px; margin-bottom: 8px; }
+.upload-zone .ttl { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.upload-zone .sub { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+input[type=file] { display: none; }
+
+.file-ok { display: none; padding: 12px 16px; }
+.file-ok.show { display: block; }
+.file-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.file-name { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--green); font-weight: 700; }
+.file-clear { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); cursor: pointer; text-decoration: underline; }
+
+.preview-wrap { overflow: auto; max-height: 150px; }
+.preview-wrap table { width: 100%; border-collapse: collapse; font-size: 11px; font-family: 'IBM Plex Mono', monospace; }
+.preview-wrap th { background: var(--dark); color: #fff; padding: 5px 9px; text-align: left; white-space: nowrap; position: sticky; top: 0; }
+.preview-wrap td { padding: 4px 9px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.preview-wrap tr:nth-child(even) td { background: #faf8f5; }
+
+/* ═══════════════════════════════════════════════════════
+   FORNECEDOR (slot de upload)
+   ═══════════════════════════════════════════════════════ */
+.forn-wrap { padding: 14px; }
+.forn-slot {
+  border: 2px dashed var(--border); border-radius: 10px; padding: 14px;
+  text-align: center; cursor: pointer; transition: all .2s; position: relative;
+  min-height: 110px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 6px;
+}
+.forn-slot:hover { border-color: var(--dark); background: #ede9e3; }
+.forn-slot.loaded { border-style: solid; border-color: var(--green); background: var(--green-bg); cursor: default; }
+.forn-slot .forn-ico { font-size: 26px; }
+.forn-slot .forn-lbl { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 1px; }
+.forn-slot .forn-hint { font-size: 11px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; }
+.forn-slot .forn-count { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--green); }
+.forn-slot .forn-x { position: absolute; top: 6px; right: 8px; font-size: 11px; color: var(--muted); cursor: pointer; font-family: 'IBM Plex Mono', monospace; }
+.forn-slot .forn-x:hover { color: var(--red); }
+.forn-name-input {
+  width: 100%; border: none; background: transparent; text-align: center;
+  font-family: 'Barlow', sans-serif; font-size: 13px; font-weight: 700;
+  color: var(--dark); outline: none;
+}
+
+/* ═══════════════════════════════════════════════════════
+   REGRAS AUTOMÁTICAS (barra amarela)
+   ═══════════════════════════════════════════════════════ */
+.rules { display: flex; gap: 16px; flex-wrap: wrap; padding: 12px 18px; background: #fffbeb; border-top: 1px solid #f0d060; }
+.rule { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #8a6a00; }
+.rule strong { color: var(--dark); }
+
+/* ═══════════════════════════════════════════════════════
+   BOTÕES
+   ═══════════════════════════════════════════════════════ */
+.btn-wrap { text-align: center; margin: 16px 0; }
+.btn {
+  background: var(--dark); color: #fff; border: none;
+  padding: 15px 48px; border-radius: 8px;
+  font-family: 'Barlow', sans-serif; font-size: 16px; font-weight: 800;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 10px;
+  transition: background .15s, transform .1s;
+}
+.btn:hover { background: #c45b00; transform: translateY(-1px); }
+.btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+.btn-sm {
+  padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 700;
+  cursor: pointer; border: 1px solid var(--border);
+  background: var(--surface); color: var(--dark);
+  font-family: 'Barlow', sans-serif; transition: all .15s;
+  display: flex; align-items: center; gap: 5px;
+}
+.btn-sm:hover { background: var(--dark); color: #fff; border-color: var(--dark); }
+.btn-sm.primary { background: var(--green); color: #fff; border-color: var(--green); }
+.btn-sm.primary:hover { background: #155233; }
+.btn-sm.btn-blue { background: var(--blue); color: #fff; border-color: var(--blue); }
+.btn-sm.btn-protheus { background: #1a5c1a; color: #fff; border-color: #1a5c1a; }
+
+/* ═══════════════════════════════════════════════════════
+   CAIXA DE ERRO
+   ═══════════════════════════════════════════════════════ */
+.err {
+  background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px;
+  padding: 12px 18px; font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px; color: #b52020; margin-bottom: 14px; display: none;
+}
+.err.show { display: block; }
+
+/* ═══════════════════════════════════════════════════════
+   OUTPUT (proposta gerada)
+   ═══════════════════════════════════════════════════════ */
+.output {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; overflow: hidden; display: none;
+  animation: slideUp .35s ease;
+}
+.output.show { display: block; }
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.out-head {
+  padding: 13px 20px; background: var(--dark);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.out-title { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 2px; color: rgba(255,255,255,.5); }
+.out-badge { font-family: 'IBM Plex Mono', monospace; font-size: 10px; padding: 3px 10px; border-radius: 20px; color: #fff; background: var(--green); }
+
+.cot-info-bar { padding: 12px 20px; background: #f8f6f2; border-bottom: 1px solid var(--border); display: flex; gap: 24px; flex-wrap: wrap; }
+.cot-f { font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+.cot-f span { color: var(--muted); font-size: 10px; display: block; }
+.cot-f.green { color: var(--green); }
+
+.items-sec { padding: 18px 20px; }
+.items-lbl { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 2px; color: var(--muted); font-weight: 700; }
+.tbl-wrap { overflow-x: auto; }
+
+/* ═══════════════════════════════════════════════════════
+   TABELA DE ITENS — classes para células
+   ═══════════════════════════════════════════════════════ */
+.items-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+.items-tbl th {
+  background: var(--dark); color: #fff; padding: 8px 11px; text-align: left;
+  font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 1px; white-space: nowrap;
+}
+.items-tbl td {
+  padding: 7px 11px; border-bottom: 1px solid var(--border);
+  font-family: 'IBM Plex Mono', monospace; vertical-align: top;
+}
+.items-tbl tr:hover td { background: #faf8f5; }
+
+/* Células da tabela de resultados */
+.td-num    { font-weight: 700; color: var(--muted); }
+.td-orig   { font-size: 11px; color: var(--muted); }
+.td-spec   { font-weight: 600; }
+.td-qtd    { font-weight: 700; text-align: center; }
+.td-cod    { font-size: 10px; color: var(--blue); }
+.td-preco  { font-size: 12px; }
+.td-total  { font-weight: 700; color: var(--green); }
+.td-na     { color: var(--muted); }
+
+/* Linha de totais */
+.tr-total td      { background: var(--bg) !important; }
+.td-total-label   { font-weight: 700; font-size: 11px; text-align: right; }
+.td-total-custo   { font-weight: 700; }
+.td-total-venda   { font-weight: 700; color: var(--blue); }
+.td-total-final   { font-weight: 700; color: var(--green); }
+
+/* Pills de status */
+.pill { display: inline-block; padding: 2px 7px; border-radius: 20px; font-size: 9px; font-weight: 700; letter-spacing: 1px; white-space: nowrap; }
+.pill-ok  { background: #dcfce7; color: #166534; }
+.pill-ass { background: #fef9c3; color: #854d0e; }
+.pill-att { background: #fee2e2; color: #991b1b; }
+.pill-na  { background: #f3f4f6; color: #6b7280; }
+
+.obs-txt { font-size: 10px; color: var(--orange); font-style: italic; margin-top: 3px; }
+
+/* Barra de confiança */
+.conf { display: inline-block; width: 32px; height: 6px; border-radius: 3px; vertical-align: middle; margin-left: 4px; }
+.conf-high { background: #22c55e; }
+.conf-med  { background: #f59e0b; }
+.conf-low  { background: #ef4444; }
+
+/* ═══════════════════════════════════════════════════════
+   TOTAL BAR + PENDÊNCIAS + AÇÕES
+   ═══════════════════════════════════════════════════════ */
+.total-bar {
+  background: var(--dark); color: #fff; padding: 16px 20px;
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 12px;
+}
+.total-lbl { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: rgba(255,255,255,.5); }
+.total-val { font-family: 'IBM Plex Mono', monospace; font-size: 20px; font-weight: 700; }
+.total-val-sm { font-family: 'IBM Plex Mono', monospace; font-size: 16px; font-weight: 700; }
+.total-sub { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: rgba(255,255,255,.4); margin-top: 3px; }
+.text-right { text-align: right; }
+
+.pend-box { padding: 14px 20px; background: #fffbeb; border-top: 1px solid #fcd34d; display: none; }
+.pend-lbl { font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: var(--orange); font-weight: 700; letter-spacing: 2px; margin-bottom: 8px; }
+.pend-txt { font-family: 'IBM Plex Mono', monospace; font-size: 11px; line-height: 1.9; white-space: pre-wrap; }
+
+.out-actions { padding: 12px 18px; border-top: 1px solid var(--border); background: var(--bg); display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ═══════════════════════════════════════════════════════
+   FILTROS + PAGINAÇÃO
+   ═══════════════════════════════════════════════════════ */
+.tbl-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+
+.filter-btn {
+  padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: 700;
+  font-family: 'IBM Plex Mono', monospace; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface); color: var(--muted);
+  letter-spacing: 1px; transition: all .12s;
+}
+.filter-btn:hover { border-color: var(--dark); color: var(--dark); }
+.filter-btn.active { background: var(--dark); color: #fff; border-color: var(--dark); }
+
+.pag-bar { display: none; align-items: center; justify-content: space-between; padding: 10px 20px; border-top: 1px solid var(--border); background: var(--bg); flex-wrap: wrap; gap: 8px; }
+.pag-bar.show { display: flex; }
+.pag-info { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+.pag-info strong { color: var(--dark); }
+.pag-btns { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.pag-btn { padding: 5px 11px; border-radius: 5px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 700; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--dark); transition: all .12s; }
+.pag-btn:hover:not(:disabled) { background: var(--dark); color: #fff; border-color: var(--dark); }
+.pag-btn:disabled { opacity: .35; cursor: not-allowed; }
+.pag-btn.active { background: var(--dark); color: #fff; border-color: var(--dark); }
+.pag-dots { font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 0 4px; }
+
+/* Barra de progresso */
+.prog-bar { height: 3px; background: var(--border); border-radius: 2px; margin: 0 20px; display: none; }
+.prog-bar.show { display: block; }
+.prog-fill { height: 100%; background: var(--green); border-radius: 2px; transition: width .3s; width: 0%; }
+
+/* ═══════════════════════════════════════════════════════
+   INPUTS EDITÁVEIS INLINE (tabela de resultados)
+   ═══════════════════════════════════════════════════════ */
+.edit-input {
+  width: 80px; padding: 3px 6px;
+  border: 1px solid var(--border); border-radius: 4px;
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 700;
+  color: var(--dark); background: #fafaf8; outline: none; text-align: right;
+}
+.edit-input:focus { border-color: var(--blue); background: #fff; }
+.edit-input.edit-venda { color: var(--blue); width: 90px; }
+.edit-input.edit-prazo { color: var(--muted); width: 60px; text-align: center; }
+.edit-input.editado { background: #eff6ff; border-color: var(--blue); }
+
+/* ═══════════════════════════════════════════════════════
+   CACHE / APRENDIZADO
+   ═══════════════════════════════════════════════════════ */
+.cache-bar {
+  padding: 8px 18px; background: #f0f4ff; border-bottom: 1px solid #c7d2fe;
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--blue);
+  display: none;
+}
+.cache-clear { color: var(--red); cursor: pointer; text-decoration: underline; font-size: 10px; }
+.cache-clear:hover { color: #7f1d1d; }
+.td-cache { font-size: 9px; color: var(--blue); font-weight: 700; }
+.pill-cache { background: #dbeafe; color: #1e40af; }
+
+/* ═══════════════════════════════════════════════════════
+   RESPONSIVO
+   ═══════════════════════════════════════════════════════ */
+@media (max-width: 600px) {
+  .grid-cotacao { grid-template-columns: 1fr; }
+  .grid-protheus { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 768px) {
+  .grid-main { grid-template-columns: 1fr !important; }
+}
+</style>
+</head>
+
+<body>
+<div class="wrap">
+
+  <!-- ═══ HEADER ═══ -->
+  <div class="hdr">
+    <div class="hdr-left">
+      <div class="hdr-icon">📋</div>
+      <div>
+        <h1>Gerador de Propostas</h1>
+        <p>cotação · comparação · exportação</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ DADOS DA COTAÇÃO ═══ -->
+  <div class="section">
+    <div class="sec-head"><span class="sec-title">DADOS DA COTAÇÃO</span></div>
+
+    <div class="grid-cotacao">
+      <div class="field"><label>CLIENTE</label><input id="cliente" type="text" placeholder="Nome do cliente"></div>
+      <div class="field"><label>Nº COTAÇÃO</label><input id="cotNum" type="text" placeholder="COT-2026-001"></div>
+      <div class="field"><label>DATA</label><input id="cotData" type="text" placeholder="09/03/2026"></div>
+      <div class="field field-margem"><label>MARGEM (%)</label><input id="margem" type="number" min="0" max="999" step="0.5" placeholder="0" oninput="if(resultFinal){ renderTabela(resultFinal); atualizarTotaisLive(); }"></div>
+      <div class="field"><label>VALIDADE (dias)</label><input id="validade" type="number" min="1" placeholder="5" value="5"></div>
+    </div>
+
+    <!-- Protheus (colapsável) -->
+    <div class="border-top">
+      <div id="protheusTrigger" class="protheus-trigger">
+        <span id="protheusArrow">▼</span> DADOS PROTHEUS (importação SD)
+        <span class="badge-alt">Caminho 2</span>
+      </div>
+      <div class="grid-protheus" id="protheusGrid">
+        <div class="field"><label>FILIAL</label><input id="pt_filial" type="text" placeholder="001" value="001"></div>
+        <div class="field"><label>CÓD. CLIENTE</label><input id="pt_cliente" type="text" placeholder="000001"></div>
+        <div class="field"><label>LOJA CLIENTE</label><input id="pt_loja" type="text" placeholder="01" value="01"></div>
+        <div class="field"><label>COND. PAGAMENTO</label><input id="pt_condpag" type="text" placeholder="000" value="000"></div>
+        <div class="field"><label>TIPO PEDIDO</label><input id="pt_tipo" type="text" placeholder="N" value="N"></div>
+        <div class="field"><label>TES</label><input id="pt_tes" type="text" placeholder="501" value="501"></div>
+        <div class="field"><label>MOEDA</label><input id="pt_moeda" type="text" placeholder="1" value="1"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ GRID: PEDIDO + TABELA DE PREÇOS ═══ -->
+  <div class="grid-main">
+
+    <!-- PEDIDO DO CLIENTE -->
+    <div class="section mb-0">
+      <div class="sec-head"><span class="sec-title">PEDIDO DO CLIENTE</span><span class="sec-num">1</span></div>
+      <div class="tabs">
+        <button class="tab active" id="tabTxt" onclick="switchTab('txt')">✏ DIGITAR / COLAR</button>
+        <button class="tab" id="tabXls" onclick="switchTab('xls')">📊 UPLOAD EXCEL</button>
+      </div>
+      <div id="panelTxt">
+        <textarea id="txtPedido" placeholder="Cole o pedido do cliente aqui...
+
+curva 12 wpb x4
+flange wn 6 150# rf a105 x6
+te 4 sch40 x10
+cap 8 xs wpb x2
+reducao 8x6 exc x1
+
+Qualquer formato funciona."></textarea>
+      </div>
+      <div id="panelXls" style="display:none">
+        <div class="upload-zone" id="pedZone"
+             onclick="document.getElementById('pedFile').click()"
+             ondragover="handleDragOver(event,'pedZone')"
+             ondragleave="handleDragLeave('pedZone')"
+             ondrop="handleDropPedido(event)">
+          <div class="ico">📋</div>
+          <div class="ttl">Clique ou arraste o pedido</div>
+          <div class="sub">.xlsx · .xls · .csv</div>
+        </div>
+        <input type="file" id="pedFile" accept=".xlsx,.xls,.csv" onchange="lerPedido(this.files[0])">
+        <div class="file-ok" id="pedOk">
+          <div class="file-info">
+            <span class="file-name" id="pedNome"></span>
+            <span class="file-clear" onclick="limparPedido()">✕ remover</span>
+          </div>
+          <div class="preview-wrap"><table id="pedTable"></table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABELA DE PREÇOS -->
+    <div class="section mb-0">
+      <div class="sec-head"><span class="sec-title">TABELA DE PREÇOS</span><span class="sec-num">2</span></div>
+      <div class="forn-wrap">
+        <div class="forn-slot" id="fs0"
+             onclick="document.getElementById('ff0').click()"
+             ondragover="handleDragOver(event,'fs0')"
+             ondragleave="handleDragLeave('fs0')"
+             ondrop="handleDropForn(event,0)">
+          <div class="forn-ico">📊</div>
+          <div class="forn-lbl">TABELA DO FORNECEDOR</div>
+          <div class="forn-hint">Clique ou arraste · .xlsx · .xls · .csv</div>
+        </div>
+      </div>
+      <input type="file" id="ff0" accept=".xlsx,.xls,.csv" onchange="lerForn(0,this.files[0])">
+    </div>
+  </div>
+
+  <!-- ═══ REGRAS AUTOMÁTICAS ═══ -->
+  <div class="section">
+    <div class="rules">
+      <div class="rule">⚙ <strong>CURVA sem raio</strong> → RL</div>
+      <div class="rule">⚙ <strong>CURVA sem ângulo</strong> → 90°</div>
+      <div class="rule">⚙ <strong>TE sem tipo</strong> → IGUAL</div>
+      <div class="rule">⚙ <strong>REDUÇÃO sem tipo</strong> → CONCÊNTRICA</div>
+      <div class="rule">⚙ <strong>DN em mm</strong> → converte pra polegadas</div>
+      <div class="rule">⚙ <strong>Typos comuns</strong> → corrigidos</div>
+      <div class="rule">⚙ Preços em <strong>USD ($)</strong></div>
+    </div>
+  </div>
+
+  <!-- ═══ ERRO + CACHE + BOTÃO ═══ -->
+  <div class="cache-bar" id="cacheInfo"></div>
+  <div class="err" id="errBox"></div>
+  <div class="btn-wrap">
+    <button class="btn" id="btnGerar" onclick="gerar()">⚡ Gerar Proposta</button>
+  </div>
+
+  <!-- ═══ OUTPUT ═══ -->
+  <div class="output" id="outBox">
+    <div class="out-head">
+      <span class="out-title">PROPOSTA GERADA</span>
+      <span class="out-badge" id="outBadge">✓ PRONTO</span>
+    </div>
+    <div class="cot-info-bar" id="cotBar"></div>
+    <div class="items-sec">
+      <div class="tbl-controls">
+        <span class="items-lbl">ITENS ANALISADOS</span>
+        <button class="filter-btn active" onclick="setFiltro('todos',this)">TODOS</button>
+        <button class="filter-btn" onclick="setFiltro('atencao',this)">⚠ ATENÇÃO</button>
+        <button class="filter-btn" onclick="setFiltro('assumido',this)">ASSUMIDO</button>
+        <button class="filter-btn" onclick="setFiltro('nao_encontrado',this)">N/A</button>
+        <button class="filter-btn" onclick="setFiltro('ok',this)">OK</button>
+      </div>
+      <div class="prog-bar" id="progBar"><div class="prog-fill" id="progFill"></div></div>
+      <div class="tbl-wrap"><table class="items-tbl" id="itemsTbl"></table></div>
+    </div>
+    <div class="pag-bar" id="pagBar">
+      <div class="pag-info" id="pagInfo"></div>
+      <div class="pag-btns" id="pagBtns"></div>
+    </div>
+    <div class="total-bar" id="totBar" style="display:none">
+      <div>
+        <div class="total-lbl">TOTAL GERAL</div>
+        <div class="total-val" id="totVal"></div>
+        <div class="total-sub" id="totValidade">Validade: 5 dias úteis</div>
+      </div>
+      <div class="text-right">
+        <div class="total-lbl">PRAZO MÁXIMO</div>
+        <div class="total-val-sm" id="totPrazo"></div>
+      </div>
+    </div>
+    <div class="pend-box" id="pendBox">
+      <div class="pend-lbl">⚠ CONFIRMAR COM CLIENTE</div>
+      <div class="pend-txt" id="pendTxt"></div>
+    </div>
+    <div class="out-actions">
+      <button class="btn-sm primary" onclick="baixarExcel()">📥 Baixar Excel (interno)</button>
+      <button class="btn-sm btn-blue" onclick="gerarPropostaCliente()">📄 Proposta para Cliente</button>
+      <button class="btn-sm btn-protheus" onclick="exportarProtheus(event)">🔗 Exportar Protheus</button>
+      <button class="btn-sm" onclick="novaProposta()">🔄 Nova proposta</button>
+    </div>
+  </div>
+
+</div><!-- /wrap -->
+
+<script>
+/* ╔═══════════════════════════════════════════════════════════════════╗
+   ║  GERADOR DE PROPOSTAS v7 — Refatorado                            ║
+   ║                                                                 ║
+   ║  Estrutura do código:                                           ║
+   ║   1. ESTADO GLOBAL                                              ║
+   ║   2. UTILIDADES DE TEXTO (normalização, typos, mm→pol)          ║
+   ║   3. PARSER DE LINHA (sub-funções por responsabilidade)         ║
+   ║   4. ENGINE DE MATCHING (compara pedido × tabela fornecedor)    ║
+   ║   5. PROCESSAMENTO PRINCIPAL (gerar proposta)                   ║
+   ║   6. RENDERIZAÇÃO (montar tabela, paginação, filtros)           ║
+   ║   7. LEITURA DE ARQUIVOS (Excel do pedido e fornecedor)         ║
+   ║   8. EXPORTAÇÃO (Excel interno, proposta cliente, Protheus)     ║
+   ║   9. HELPERS DE UI (tabs, drag/drop, erros, reset)              ║
+   ╚═══════════════════════════════════════════════════════════════════╝ */
+
+
+/* ═══════════════════════════════════════════════════════
+   1. ESTADO GLOBAL
+   ═══════════════════════════════════════════════════════ */
+
+let pedidoXlsTxt = '';
+let fornecedor   = [{ nome: '', linhas: [], headers: [] }];
+let resultFinal  = null;
+let paginaAtual  = 1;
+let filtroAtivo  = 'todos';
+const ITENS_POR_PAGINA = 100;
+
+// ── Cache de aprendizado ──
+// Armazena associações código_fornecedor → resultado do match.
+// Persiste em localStorage para reutilização entre sessões.
+// Estrutura: { "fornecedor_nome": { "COD-NORM": { descCompleta, preco, prazo, ... } } }
+let cacheAprendido = {};
+
+function carregarCache() {
+  try {
+    const raw = localStorage.getItem('propostaCache_v1');
+    if (raw) cacheAprendido = JSON.parse(raw);
+  } catch (e) { cacheAprendido = {}; }
+}
+
+function salvarCache() {
+  try {
+    localStorage.setItem('propostaCache_v1', JSON.stringify(cacheAprendido));
+  } catch (e) { /* localStorage cheio ou indisponível — ignora */ }
+}
+
+function limparCache() {
+  cacheAprendido = {};
+  localStorage.removeItem('propostaCache_v1');
+  atualizarCacheUI();
+}
+
+function getCacheStats() {
+  let total = 0;
+  for (const forn in cacheAprendido) total += Object.keys(cacheAprendido[forn]).length;
+  return { fornecedores: Object.keys(cacheAprendido).length, itens: total };
+}
+
+function atualizarCacheUI() {
+  const el = document.getElementById('cacheInfo');
+  if (!el) return;
+  const stats = getCacheStats();
+  if (stats.itens > 0) {
+    el.innerHTML = `🧠 <strong>${stats.itens}</strong> códigos aprendidos de <strong>${stats.fornecedores}</strong> fornecedor(es) · <span class="cache-clear" onclick="limparCache()">limpar</span>`;
+  } else {
+    el.innerHTML = `🧠 Nenhum código aprendido ainda — gere uma proposta para o app começar a aprender`;
+  }
+  el.style.display = 'block';
+}
+
+// Inicializa cache ao carregar
+carregarCache();
+atualizarCacheUI();
+
+
+/* ═══════════════════════════════════════════════════════
+   2. UTILIDADES DE TEXTO
+   ═══════════════════════════════════════════════════════ */
+
+function norm(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+function esc(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function fmtUSD(v) {
+  return '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function getMargem() {
+  return Math.max(0, parseFloat(document.getElementById('margem').value) || 0);
+}
+
+const REGRAS_TYPOS = [
+  [/\bcurba\b/gi,'curva'],[/\bflanje\b/gi,'flange'],[/\bconecao\b/gi,'conexao'],
+  [/\bshc\b/gi,'sch'],[/\bwbp\b/gi,'wpb'],[/sch\s*4o\b/gi,'sch 40'],
+  [/a-?105\b/gi,'a105'],[/a\s*234\b/gi,'a234'],
+  [/\belbow\b/gi,'curva'],[/\bcotovelo\b/gi,'curva'],[/\bjoelho\b/gi,'curva'],
+  [/\btee\b/gi,'te'],[/\btampa\b/gi,'cap'],[/\bluva\b/gi,'coupling'],
+  [/\bniple\b/gi,'nipple'],[/\bflg\b/gi,'flange'],[/\bell\b/gi,'curva'],
+  [/\bred\b/gi,'reducao'],[/3d\b/gi,'rl'],[/r\.c\./gi,'rc'],[/r\.l\./gi,'rl'],
+  [/(\d+)\s*lbs/gi,(_,n)=>n+'#'],[/\b(\d+)\s*gr(aus?)?\b/gi,(_,n)=>n+'°'],
+  [/\bpolegadas?\b/gi,'"'],[/\bgraus?\b/gi,'°'],[/\bdn\s*(\d)/gi,'$1'],
+  [/\bconc[eê]ntrica\b/gi,'concentrica'],[/\bexc[eê]ntrica\b/gi,'excentrica'],
+  [/\bexc\b/gi,'excentrica'],
+  [/\bweld[\s-]neck\b/gi,'wn'],[/\bslip[\s-]on\b/gi,'so'],
+  [/\bcego\b/gi,'bl'],[/\bblind\b/gi,'bl'],
+];
+
+function fixTypos(s) {
+  for (const [re, rp] of REGRAS_TYPOS) s = s.replace(re, rp);
+  return s;
+}
+
+const MM_PARA_POLEGADAS = {
+  15:'1/2',20:'3/4',25:'1',32:'1.1/4',40:'1.1/2',50:'2',65:'2.1/2',80:'3',
+  100:'4',125:'5',150:'6',200:'8',250:'10',300:'12',350:'14',400:'16',450:'18',500:'20',600:'24'
+};
+
+function mmParaPol(s) {
+  return s.replace(/(\d+)\s*mm/gi, (m, n) => MM_PARA_POLEGADAS[parseInt(n)] ? MM_PARA_POLEGADAS[parseInt(n)] + '"' : m);
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   3. PARSER DE LINHA DO CLIENTE
+   Quebrado em sub-funções por responsabilidade.
+   ═══════════════════════════════════════════════════════ */
+
+const REGRAS_MATERIAL = [
+  [/wphy\s*70/i,'ASTM A860 WPHY 70'],[/wphy\s*65/i,'ASTM A860 WPHY 65'],
+  [/wphy\s*60/i,'ASTM A860 WPHY 60'],[/wphy\s*52/i,'ASTM A860 WPHY 52'],
+  [/wphy/i,'⚠ WPHY (grau não informado)'],
+  [/316l/i,'ASTM A182 F316L'],[/316/i,'ASTM A182 F316'],
+  [/304l/i,'ASTM A182 F304L'],[/304/i,'ASTM A182 F304'],
+  [/wp316l/i,'ASTM A403 WP316L'],[/wp304/i,'ASTM A403 WP304'],
+  [/\ba105\b/i,'ASTM A105'],[/wpb|a234/i,'ASTM A234 WPB'],
+  [/\binox\b|\bss\b|\bstainless\b/i,'⚠ Inox (grau não informado)'],
+  [/\bcs\b|\bcarbono\b/i,'⚠ Carbon Steel (especificar norma)'],
+];
+
+const DN_EXCLUIR = [40, 80, 20, 160, 150, 300, 600, 900, 45, 90];
+
+/** 3.1 — Extrai quantidade do texto. Retorna { qtd, qtdObs, textoLimpo } */
+function extrairQuantidade(s) {
+  let qtd = 1, qtdObs = '';
+
+  const patterns = [
+    /\blote\s+de\s+(\d+)/i, /\bqtd[:\s]+(\d+)/i,
+    /\((\d+)\s*(pcs?|un|unid|pe[çc]as?)?\)/i,
+    /\s+x\s*(\d+)$/i, /^(\d+)\s*x\s+(?=\D)/i,
+    /\s+(\d+)\s*(pcs?|un\.?|unid\.?|pe[çc]as?)\b/i,
+    /\s+(\d+)\s*$/,
+  ];
+
+  for (const p of patterns) {
+    const m = s.match(p);
+    if (m) { qtd = parseInt(m[1]); s = s.replace(m[0], ' '); break; }
+  }
+
+  if (/conforme\s+projeto|a\s+definir|conforme\s+planilha/i.test(s)) {
+    qtd = null; qtdObs = 'Quantidade não informada — confirmar com cliente';
+  }
+
+  const inicioQtd = s.match(/^\s*(\d+)\s*x?\s+/i);
+  if (inicioQtd && !qtdObs && qtd === 1) {
+    qtd = parseInt(inicioQtd[1]); s = s.replace(inicioQtd[0], ' ');
+  }
+
+  return { qtd, qtdObs, textoLimpo: s.trim() };
+}
+
+/** 3.2 — Detecta tipo de produto. Ordem importa: TE antes de REDUCAO */
+function detectarProduto(s) {
+  if (/\bcurva\b/i.test(s)) return 'CURVA';
+  if (/\bflange\b/i.test(s)) return 'FLANGE';
+  if (/\bcap\b/i.test(s)) return 'CAP';
+  if (/\bcoupling\b/i.test(s)) return 'COUPLING';
+  if (/\bnipple\b/i.test(s)) return 'NIPPLE';
+  if (/\bunion\b/i.test(s) || /\buniao\b/i.test(s)) return 'UNION';
+  if (/\bte\b/i.test(s)) return 'TE';
+  if (/\breducao\b/i.test(s) || /\bredu[çc][aã]o\b/i.test(s)) return 'REDUCAO';
+  return 'CONEXAO';
+}
+
+/** 3.3 — Extrai DN e DN de redução. Retorna { dn, dnRed } */
+function extrairDN(s, produto) {
+  let dn = '';
+
+  const fracMatch = s.match(/(\d+)[.\s]+(\d+\/\d+)\s*["']?/);
+  if (fracMatch) {
+    dn = fracMatch[1] + '.' + fracMatch[2] + '"';
+  } else {
+    const dnMatch = s.match(/(\d+\/\d+|\d+(?:\.\d+)?)\s*["'pol]/i) || s.match(/\b(\d+)\s*(?:"|pol|poleg)/i);
+    if (dnMatch) dn = dnMatch[1].includes('"') ? dnMatch[1] : dnMatch[1] + '"';
+    else {
+      const nums = [...s.matchAll(/\b(\d+(?:\.\d+)?)\b/g)].map(m => parseFloat(m[1]));
+      const dnNum = nums.find(n => n >= 0.5 && n <= 24 && !DN_EXCLUIR.includes(n));
+      if (dnNum !== undefined) dn = dnNum + '"';
+    }
+  }
+
+  // DN de redução (8x6, 8"x6") — ignora "x{qtd}" no final
+  const sSemQtd = s.replace(/\s+x\s*\d+\s*$/i, '').replace(/\s+\d+\s*(pcs?|un|unid)\s*$/i, '');
+  let dnRed = '';
+  const redMatch = sSemQtd.match(/(\d+(?:\.\d+)?)["\s]*x\s*(\d+(?:\.\d+)?)/i);
+
+  if (redMatch && produto === 'REDUCAO') {
+    dnRed = redMatch[1] + '"x' + redMatch[2] + '"';
+  }
+  if (redMatch && produto === 'TE') {
+    const n1 = parseFloat(redMatch[1]), n2 = parseFloat(redMatch[2]);
+    if (/reducao|reducing/i.test(s) || (n1 !== n2 && n1 >= 0.5 && n1 <= 24 && n2 >= 0.5 && n2 <= 24)) {
+      dnRed = redMatch[1] + '"x' + redMatch[2] + '"';
+    }
+  }
+
+  return { dn, dnRed };
+}
+
+/** 3.4 — Extrai Schedule */
+function extrairSCH(s) {
+  const m = s.match(/\b(sch\s*\d+|xxs|xs|std|stpd)\b/i);
+  if (!m) return '';
+  return m[1].replace(/\s+/, '').toUpperCase().replace(/SCH(\d)/, 'SCH $1');
+}
+
+/** 3.5 — Detecta material pela lista de regras */
+function detectarMaterial(s) {
+  for (const [re, val] of REGRAS_MATERIAL) {
+    if (re.test(s)) return val;
+  }
+  return '';
+}
+
+/** 3.6 — Extrai subtipo e gera observações. Retorna { tipo, obs, assumidos } */
+function extrairSubtipo(s, produto, dnRed) {
+  let tipo = '', obs = [], assumidos = [];
+
+  if (produto === 'CURVA') {
+    let raio = '';
+    if (/\brl\b|\braio\s*longo\b/i.test(s)) raio = 'RL';
+    else if (/\brc\b|\braio\s*curto\b/i.test(s)) raio = 'RC';
+    else { raio = 'RL'; assumidos.push('raio assumido RL'); }
+
+    let ang = '';
+    for (const p of [/\b(45|90)°/, /\b(45|90)\s*graus?/i, /\b(45|90)gr\b/i]) {
+      const m = s.match(p); if (m) { ang = m[1] + '°'; break; }
+    }
+    if (!ang) { const m = s.match(/\b(45|90)\s+(\d+)\s/); if (m) ang = m[1] + '°'; }
+    if (!ang) { ang = '90°'; assumidos.push('ângulo assumido 90°'); }
+    tipo = `${raio} ${ang}`;
+  }
+
+  if (produto === 'FLANGE') {
+    let ft = '';
+    if (/\bwn\b|\bweld\s*neck\b/i.test(s)) ft = 'WN';
+    else if (/\bso\b|\bslip\s*on\b/i.test(s)) ft = 'SO';
+    else if (/\bbl\b|\bblind\b|\bcego\b/i.test(s)) ft = 'BL';
+    else if (/\bsw\b|\bsocket\s*weld\b/i.test(s)) ft = 'SW';
+    else if (/\bth\b|\bthreaded\b|\broscad/i.test(s)) ft = 'TH';
+    else obs.push('tipo de flange não informado — confirmar (WN/SO/BL?)');
+
+    let cls = '';
+    const clsM = s.match(/(\d+)\s*#/) || s.match(/\b(150|300|600|900|1500|2500)\b(?!\s*mm)/i);
+    if (clsM) cls = clsM[1] + '#';
+    else obs.push('classe de pressão não informada — confirmar (150#/300#?)');
+
+    let face = '';
+    if (/\brf\b/i.test(s)) face = 'RF';
+    else if (/\brtj\b/i.test(s)) face = 'RTJ';
+    else if (/\bff\b/i.test(s)) face = 'FF';
+    tipo = [ft, cls, face].filter(Boolean).join(' ');
+  }
+
+  if (produto === 'TE') {
+    if (dnRed) tipo = 'REDUCAO ' + dnRed;
+    else if (/reducao|reducing/i.test(s)) { tipo = 'REDUCAO'; obs.push('confirmar DNs da redução (ex: 8"x6")'); }
+    else { tipo = 'IGUAL'; assumidos.push('tipo assumido TE IGUAL'); }
+  }
+
+  if (produto === 'REDUCAO') {
+    if (/excentrica/i.test(s)) tipo = 'EXCENTRICA';
+    else { tipo = 'CONCENTRICA'; assumidos.push('tipo assumido CONCENTRICA'); }
+    if (dnRed) tipo += ' ' + dnRed;
+  }
+
+  if (produto === 'NIPPLE') {
+    tipo = /close|curto/i.test(s) ? 'CURTO' : 'LONGO';
+  }
+
+  return { tipo, obs, assumidos };
+}
+
+/** Função principal: orquestra as sub-funções */
+function parseLinha(linha) {
+  let s = fixTypos(mmParaPol(linha));
+  const orig = linha.trim();
+
+  const { qtd, qtdObs, textoLimpo } = extrairQuantidade(s);
+  s = textoLimpo;
+
+  const produto = detectarProduto(s);
+  const { dn, dnRed } = extrairDN(s, produto);
+  const sch = extrairSCH(s);
+  const mat = detectarMaterial(s);
+  const { tipo, obs, assumidos } = extrairSubtipo(s, produto, dnRed);
+
+  if (assumidos.length) obs.unshift('Assumido: ' + assumidos.join(', '));
+  if (qtdObs) obs.push(qtdObs);
+
+  const temAtencao = mat.startsWith('⚠') || obs.some(o => o.includes('confirmar') || o.includes('não informad'));
+
+  return {
+    orig, produto, tipo, dn: dnRed || dn, sch, mat, qtd,
+    obs: obs.join(' | '),
+    status: temAtencao ? 'atencao' : (assumidos.length ? 'assumido' : 'ok'),
+    descCompleta: [produto, tipo, dnRed || dn, sch, mat].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim()
+  };
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   4. ENGINE DE MATCHING
+   ═══════════════════════════════════════════════════════ */
+
+function normDN(dn) {
+  return String(dn || '').replace(/["\s]/g, '').toLowerCase().replace(/^(\d+)\.0+$/, '$1');
+}
+function normSCH(sch) {
+  return String(sch || '').toLowerCase().replace(/\s+/g, '');
+}
+function dnParaNumero(d) {
+  const m = d.match(/^(\d+)\.(\d+)\/(\d+)$/);
+  if (m) return +m[1] + +m[2] / +m[3];
+  const m2 = d.match(/^(\d+)\/(\d+)$/);
+  if (m2) return +m2[1] / +m2[2];
+  return parseFloat(d) || 0;
+}
+
+function parsePreco(v) {
+  const s = String(v || '').trim();
+  if (!s) return null;
+  let n = s.replace(/[R$€£¥\s]/g, '');
+  if (!n) return null;
+  const lastDot = n.lastIndexOf('.'), lastComma = n.lastIndexOf(',');
+  if (lastComma > lastDot) n = n.replace(/\./g, '').replace(',', '.');
+  else if (lastDot > lastComma) n = n.replace(/,/g, '');
+  else {
+    const m = n.match(/[.,](\d+)$/);
+    if (m && m[1].length === 3 && !/^0+$/.test(m[1])) n = n.replace(/[.,]/g, '');
+    else n = n.replace(/,/, '.');
+  }
+  const r = parseFloat(n);
+  return isNaN(r) ? null : r;
+}
+
+function scoreLinha(item, linha, headers) {
+  const getColuna = (nomes) => {
+    for (const nome of nomes) {
+      const idx = headers.findIndex(h => norm(h).includes(nome));
+      if (idx >= 0 && linha[idx] !== undefined) return String(linha[idx]).trim();
+    }
+    return '';
+  };
+
+  const lProd = norm(getColuna(['produto','product','item']));
+  const lTipo = norm(getColuna(['tipo','type']));
+  const lRaio = norm(getColuna(['raio','radius']));
+  const lAng  = norm(getColuna(['angulo','angle','ang']));
+  const lSCH  = normSCH(getColuna(['sch','schedule','espessura']));
+  const lDN   = normDN(getColuna(['dn','diametro','diameter','poleg']));
+  const lMat  = norm(getColuna(['material','mat','norma','spec']));
+
+  let score = 0;
+  const iProd = norm(item.produto);
+
+  // Produto (25 pts)
+  if (lProd && iProd) {
+    if (lProd === iProd) score += 25;
+    else if (lProd.includes(iProd) || iProd.includes(lProd)) score += 20;
+    else if (lProd[0] === iProd[0]) score += 5;
+  }
+
+  // DN (25 pts)
+  const iDNstr = normDN(item.dn).split('x')[0];
+  if (iDNstr && lDN) {
+    if (iDNstr === lDN) score += 25;
+    else if (Math.abs(dnParaNumero(iDNstr) - dnParaNumero(lDN)) < 0.01) score += 22;
+  }
+
+  // SCH (20 pts)
+  const iSCH = normSCH(item.sch);
+  if (iSCH && lSCH) { if (iSCH === lSCH) score += 20; }
+  else if (!iSCH && !lSCH) score += 10;
+
+  // Material (15 pts)
+  const iMat = norm((item.mat || '').replace(/⚠.*$/, '').trim());
+  if (iMat && lMat) {
+    if (lMat === iMat || lMat.includes(iMat) || iMat.includes(lMat)) score += 15;
+    else if ((lMat.includes('wpb') && iMat.includes('wpb')) || (lMat.includes('a105') && iMat.includes('a105'))) score += 15;
+    else {
+      const comuns = iMat.split(/\s+/).filter(w => w.length > 2 && lMat.split(/\s+/).some(lw => lw.includes(w) || w.includes(lw)));
+      score += Math.min(10, comuns.length * 4);
+    }
+  }
+
+  // Raio + Ângulo (CURVA: 10 + 5 pts)
+  const iTipo = norm(item.tipo || '');
+  if (iProd === 'curva') {
+    const iRL = iTipo.includes('rl') || iTipo.includes('longo');
+    const iRC = iTipo.includes('rc') || iTipo.includes('curto');
+    const lRL = lRaio.includes('rl') || lRaio.includes('longo') || lTipo.includes('rl');
+    const lRC = lRaio.includes('rc') || lRaio.includes('curto') || lTipo.includes('rc');
+    if ((iRL && lRL) || (iRC && lRC)) score += 10;
+    else if ((iRL && lRC) || (iRC && lRL)) score -= 15;
+
+    const iAng = iTipo.includes('45') ? '45' : iTipo.includes('90') ? '90' : '';
+    const lAngStr = lAng || lTipo;
+    if (iAng && lAngStr.includes(iAng)) score += 5;
+    else if (iAng && lAngStr && !lAngStr.includes(iAng)) score -= 5;
+  }
+
+  const descMatch = linha.filter(c => c != null && String(c).trim().length > 2 && isNaN(Number(String(c)))).slice(0, 4).join(' / ');
+
+  return {
+    score, pct: Math.max(0, score) / 100,
+    preco: parsePreco(getColuna(['preco','price','valor','unit','custo'])),
+    prazo: parseInt(getColuna(['prazo','lead','entrega','dias'])) || null,
+    descMatch, matTabela: lMat, schTabela: lSCH,
+    partNum: getColuna(['codigo','code','part','ref','pn','sku','catalogo','cod ']) || ''
+  };
+}
+
+function buscarNaTabela(item, linhas, headers, fornNome) {
+  if (!linhas.length) return null;
+
+  // ── Camada 1: Busca por código direto ──
+  const fornData = fornecedor.find(f => f.nome === fornNome);
+  if (fornData && fornData.codigoIndex) {
+    const tokens = extrairTokensCodigo(item.orig);
+    for (const token of tokens) {
+      const rowIdx = fornData.codigoIndex[token];
+      if (rowIdx !== undefined && linhas[rowIdx]) {
+        const r = scoreLinha(item, linhas[rowIdx], headers);
+        r.pct = Math.max(r.pct, 0.95);
+        r.viaCodigo = true;
+        return r; // retorna mesmo sem preço — não cair no fuzzy com match errado
+      }
+    }
+  }
+
+  // ── Camada 2: Busca no cache de aprendizado ──
+  if (cacheAprendido[fornNome]) {
+    const tokens = extrairTokensCodigo(item.orig);
+    for (const token of tokens) {
+      const cached = cacheAprendido[fornNome][token];
+      if (cached) {
+        return { ...cached, viaCache: true, pct: Math.max(cached.pct || 0.9, 0.9) };
+      }
+    }
+  }
+
+  // ── Camada 3: Fuzzy matching normal (varrer todas as linhas) ──
+  let melhor = null, melhorScore = -1;
+  for (const linha of linhas) {
+    const r = scoreLinha(item, linha, headers);
+    if (r.score > melhorScore) { melhorScore = r.score; melhor = r; }
+  }
+
+  if (!melhor || melhor.pct < 0.35) return null;
+
+  // Salva no cache se tem código (aprende pra próxima vez)
+  if (melhor.partNum) {
+    salvarNoCache(fornNome, melhor.partNum, melhor);
+  }
+
+  return melhor;
+}
+
+/** Extrai tokens que podem ser códigos de fornecedor de um texto */
+const PALAVRAS_INDUSTRIAIS = new Set([
+  'curva','flange','reducao','te','cap','coupling','nipple','union','conexao',
+  'elbow','tee','red','blind','weld','slip','socket','threaded',
+  'wpb','a105','a234','a182','a403','a860','wphy','inox','carbono',
+  '316','304','316l','304l','f316','f304','f316l','f304l',
+  'wp316l','wp304','wp316','astm',
+  'rl','rc','wn','so','bl','sw','th','rf','rtj','ff',
+  'sch','std','xs','xxs','stpd','concentrica','excentrica',
+  'igual','reducao','reducing','longo','curto','close','exc',
+  'pcs','unid','poleg','graus','lbs',
+]);
+
+function extrairTokensCodigo(texto) {
+  const s = String(texto || '').trim();
+  const tokens = s.match(/[A-Za-z0-9][A-Za-z0-9.\-\/]{2,}/g) || [];
+  return tokens
+    .map(t => t.toUpperCase().replace(/\s+/g, ''))
+    .filter(t => {
+      const low = t.toLowerCase();
+      if (PALAVRAS_INDUSTRIAIS.has(low)) return false;
+      if (/^sch\d+$/i.test(t)) return false;       // SCH40, SCH80...
+      if (/^\d+$/i.test(t)) return false;           // números puros
+      if (/^\d+x\d+$/i.test(t)) return false;       // DNs de redução (8x6, 10x8...)
+      if (/^[a-z]{1,3}$/i.test(t)) return false;    // siglas curtas (RL, RC, WN, EXC...)
+      return true;
+    });
+}
+
+/** Salva um resultado no cache de aprendizado */
+function salvarNoCache(fornNome, codigo, resultado) {
+  if (!codigo || !fornNome) return;
+  const key = codigo.toUpperCase().replace(/\s+/g, '');
+  if (!cacheAprendido[fornNome]) cacheAprendido[fornNome] = {};
+  cacheAprendido[fornNome][key] = {
+    score: resultado.score,
+    pct: resultado.pct,
+    preco: resultado.preco,
+    prazo: resultado.prazo,
+    descMatch: resultado.descMatch,
+    matTabela: resultado.matTabela,
+    schTabela: resultado.schTabela,
+    partNum: resultado.partNum
+  };
+  salvarCache();
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   5. PROCESSAMENTO PRINCIPAL
+   ═══════════════════════════════════════════════════════ */
+
+function gerar() {
+  const pedido = (pedidoXlsTxt && pedidoXlsTxt.trim()) || document.getElementById('txtPedido').value.trim();
+  if (!pedido) { mostrarErro('Cole o pedido do cliente ou carregue uma planilha.'); return; }
+
+  const fornAtivos = fornecedor.filter(f => f.linhas.length > 0);
+  if (!fornAtivos.length) { mostrarErro('Carregue pelo menos uma tabela de preços.'); return; }
+
+  document.getElementById('errBox').classList.remove('show');
+  document.getElementById('outBox').classList.remove('show');
+
+  const linhasBruto = pedido.split('\n').map(l => l.trim()).filter(l => l.length > 1);
+  const linhas = [];
+  for (const l of linhasBruto) {
+    if (/\s+[+\/]\s+/.test(l)) l.split(/\s+[+\/]\s+/).forEach(p => { if (p.trim().length > 1) linhas.push(p.trim()); });
+    else linhas.push(l);
+  }
+
+  const btn = document.getElementById('btnGerar');
+  btn.disabled = true; btn.textContent = '⏳ Processando...';
+
+  const progBar = document.getElementById('progBar'), progFill = document.getElementById('progFill');
+  if (linhas.length > 100) { progBar.classList.add('show'); progFill.style.width = '0%'; }
+
+  const todosItens = [];
+  const CHUNK = 50;
+  let idx = 0;
+
+  function processarChunk() {
+    const fim = Math.min(idx + CHUNK, linhas.length);
+    while (idx < fim) {
+      const textoLinha = linhas[idx++];
+
+      if (/ver\s+planilha|conforme\s+especifica|igual\s+ao\s+pedido\s+anterior|idem\b/i.test(textoLinha)) {
+        todosItens.push({
+          orig: textoLinha, produto: '?', tipo: '', dn: '', sch: '', mat: '',
+          qtd: null, obs: 'Referência externa — impossível processar sem mais informações',
+          status: 'atencao', descCompleta: 'ITEM INVÁLIDO — ' + textoLinha,
+          precos: {}, melhorForn: null, melhorTotal: null, prazo: null
+        });
+        continue;
+      }
+
+      const item = parseLinha(textoLinha);
+      item.precos = {}; item.matConsiderado = item.mat || ''; item.schConsiderado = item.sch || '';
+
+      for (const f of fornAtivos) {
+        const res = buscarNaTabela(item, f.linhas, f.headers, f.nome);
+        if (res && res.preco !== null) {
+          item.precos[f.nome] = {
+            unit: res.preco,
+            total: parseFloat((res.preco * (item.qtd || 1)).toFixed(2)),
+            conf: res.pct, prazo: res.prazo,
+            descMatch: res.descMatch || '', partNum: res.partNum || '',
+            viaCodigo: res.viaCodigo || false,
+            viaCache: res.viaCache || false
+          };
+          if (!item.matConsiderado && res.matTabela) item.matConsiderado = res.matTabela.toUpperCase();
+          if (!item.schConsiderado && res.schTabela) item.schConsiderado = res.schTabela.toUpperCase();
+        }
+      }
+
+      // Reconstrói descCompleta com dados herdados
+      const matFinal = item.mat || item.matConsiderado || '';
+      const schFinal = item.sch || item.schConsiderado || '';
+      item.descCompleta = [item.produto, item.tipo, item.dn || '', schFinal, matFinal]
+        .filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+
+      if (!item.mat && item.matConsiderado) {
+        item.obs = item.obs ? item.obs + ' | Material considerado: ' + item.matConsiderado : 'Material considerado: ' + item.matConsiderado;
+        if (item.status === 'ok') item.status = 'assumido';
+      }
+      if (!item.sch && item.schConsiderado) {
+        item.obs = item.obs ? item.obs + ' | Schedule considerado: ' + item.schConsiderado : 'Schedule considerado: ' + item.schConsiderado;
+        if (item.status === 'ok') item.status = 'assumido';
+      }
+
+      let melhorForn = null, melhorTotal = Infinity, melhorPrazo = null;
+      for (const [nome, p] of Object.entries(item.precos)) {
+        if (p.total < melhorTotal) { melhorTotal = p.total; melhorForn = nome; melhorPrazo = p.prazo; }
+      }
+      item.melhorForn = melhorForn;
+      item.melhorTotal = melhorTotal === Infinity ? null : melhorTotal;
+      item.prazo = melhorPrazo;
+
+      if (Object.keys(item.precos).length === 0 && item.status !== 'atencao') item.status = 'nao_encontrado';
+      todosItens.push(item);
+    }
+
+    const pct = Math.round((idx / linhas.length) * 100);
+    progFill.style.width = pct + '%';
+    btn.textContent = linhas.length > 100 ? `⏳ ${pct}% (${idx}/${linhas.length})` : '⏳ Processando...';
+
+    if (idx < linhas.length) { requestAnimationFrame(processarChunk); }
+    else {
+      btn.disabled = false; btn.textContent = '⚡ Gerar Proposta';
+      todosItens.forEach((item, i) => item._idx = i);
+      resultFinal = { itens: todosItens, fornAtivos };
+      progBar.classList.remove('show');
+      renderizar(resultFinal);
+    }
+  }
+  requestAnimationFrame(processarChunk);
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   6. RENDERIZAÇÃO
+   ═══════════════════════════════════════════════════════ */
+
+// ── Helpers de valor por item (com override individual) ──
+
+function getCustoUnit(item) {
+  const p = item.melhorForn && item.precos && item.precos[item.melhorForn];
+  return p ? p.unit : null;
+}
+function getVendaUnit(item) {
+  if (item._vendaUnit != null) return item._vendaUnit;
+  const p = item.melhorForn && item.precos && item.precos[item.melhorForn];
+  if (!p) return null;
+  const m = getMargem();
+  return m > 0 ? parseFloat((p.unit * (1 + m / 100)).toFixed(2)) : p.unit;
+}
+function getItemPrazo(item) { return item._prazoEdit != null ? item._prazoEdit : item.prazo; }
+function getPartNum(item) {
+  const p = item.melhorForn && item.precos && item.precos[item.melhorForn];
+  return (p && p.partNum) ? p.partNum : '';
+}
+
+// ── Edição individual ──
+
+function onVendaEdit(idx, valor) {
+  const num = parseFloat(valor);
+  if (!isNaN(num) && num >= 0) resultFinal.itens[idx]._vendaUnit = num;
+  else delete resultFinal.itens[idx]._vendaUnit;
+  atualizarTotaisLive();
+}
+function onPrazoEdit(idx, valor) {
+  const num = parseInt(valor);
+  if (!isNaN(num) && num >= 0) resultFinal.itens[idx]._prazoEdit = num;
+  else delete resultFinal.itens[idx]._prazoEdit;
+  atualizarTotaisLive();
+}
+
+function calcularTotaisGlobal(r) {
+  let custo = 0, venda = 0;
+  r.itens.forEach(item => {
+    const c = getCustoUnit(item), v = getVendaUnit(item);
+    if (c) custo += parseFloat((c * (item.qtd || 1)).toFixed(2));
+    if (v) venda += parseFloat((v * (item.qtd || 1)).toFixed(2));
+  });
+  return { custo, venda };
+}
+
+function atualizarTotaisLive() {
+  if (!resultFinal) return;
+  const r = resultFinal;
+
+  r.itens.forEach((item, idx) => {
+    const v = getVendaUnit(item);
+    const el = document.getElementById('rowTotal_' + idx);
+    if (el) el.textContent = v !== null ? fmtUSD(parseFloat((v * (item.qtd || 1)).toFixed(2))) : '—';
+  });
+
+  const { custo, venda } = calcularTotaisGlobal(r);
+  const margem = getMargem();
+  const total = margem > 0 || r.itens.some(i => i._vendaUnit != null) ? venda : custo;
+  document.getElementById('totVal').textContent = fmtUSD(parseFloat(total.toFixed(2))) + (margem > 0 ? ' (venda)' : ' (custo)');
+
+  const maxPrazo = Math.max(...r.itens.map(i => getItemPrazo(i) || 0), 0);
+  document.getElementById('totPrazo').textContent = maxPrazo > 0 ? maxPrazo + ' DIAS' : '—';
+}
+
+// ── Filtros e paginação ──
+
+const STATUS_PILL  = { ok: 'pill-ok', assumido: 'pill-ass', atencao: 'pill-att', nao_encontrado: 'pill-na' };
+const STATUS_LABEL = { ok: 'OK', assumido: 'ASSUMIDO', atencao: 'ATENÇÃO', nao_encontrado: 'N/A' };
+
+function setFiltro(f, btn) {
+  filtroAtivo = f; paginaAtual = 1;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  if (resultFinal) renderTabela(resultFinal);
+}
+function itensFiltrados(r) { return filtroAtivo === 'todos' ? r.itens : r.itens.filter(i => i.status === filtroAtivo); }
+function irPag(p) {
+  paginaAtual = p;
+  if (resultFinal) renderTabela(resultFinal);
+  document.getElementById('itemsTbl').closest('.items-sec').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Tabela principal ──
+
+function renderTabela(r) {
+  const tbl = document.getElementById('itemsTbl');
+  const itens = itensFiltrados(r);
+  const total = itens.length;
+  const totalPags = Math.max(1, Math.ceil(total / ITENS_POR_PAGINA));
+  if (paginaAtual > totalPags) paginaAtual = 1;
+  const ini = (paginaAtual - 1) * ITENS_POR_PAGINA;
+  const fim = Math.min(ini + ITENS_POR_PAGINA, total);
+
+  let html = `<thead><tr>
+    <th>#</th><th>DESCRIÇÃO CLIENTE</th><th>ESPECIFICAÇÃO</th><th>QTD</th>
+    <th>STATUS</th><th>CÓD</th><th>CUSTO UNIT</th><th>P.VENDA</th><th>TOTAL</th><th>PRAZO</th>
+  </tr></thead><tbody>`;
+
+  for (let li = ini; li < fim; li++) {
+    const item = itens[li], idx = item._idx, st = item.status || 'ok';
+    const p = item.melhorForn && item.precos && item.precos[item.melhorForn];
+    const custo = getCustoUnit(item), vUnit = getVendaUnit(item);
+    const vTotal = vUnit !== null ? parseFloat((vUnit * (item.qtd || 1)).toFixed(2)) : null;
+    const partNum = getPartNum(item), prazo = getItemPrazo(item);
+
+    html += `<tr>`;
+    html += `<td class="td-num">${li + 1}</td>`;
+    html += `<td><div class="td-orig">${esc(item.orig)}</div></td>`;
+    html += `<td><div class="td-spec">${esc(item.descCompleta)}</div>${item.obs ? '<div class="obs-txt">' + esc(item.obs) + '</div>' : ''}</td>`;
+    html += `<td class="td-qtd">${item.qtd != null ? item.qtd : '?'}</td>`;
+    html += `<td><span class="pill ${STATUS_PILL[st] || 'pill-na'}">${STATUS_LABEL[st] || st}</span></td>`;
+    html += `<td class="td-cod">${partNum ? esc(partNum) : '<span class="td-na">—</span>'}</td>`;
+
+    if (custo !== null) {
+      const confClass = p.conf >= 0.8 ? 'conf-high' : p.conf >= 0.6 ? 'conf-med' : 'conf-low';
+      const matchTag = p.viaCodigo ? '<div class="td-cache">⚡ CÓDIGO</div>'
+                     : p.viaCache  ? '<div class="td-cache">🧠 CACHE</div>' : '';
+      html += `<td${p.descMatch ? ' title="' + esc(p.descMatch) + '"' : ''}>`;
+      html += `<span class="td-preco">${fmtUSD(custo)}</span>`;
+      html += `<span class="conf ${confClass}" title="Confiança: ${Math.round(p.conf * 100)}%"></span>${matchTag}</td>`;
+
+      const editado = item._vendaUnit != null ? ' editado' : '';
+      html += `<td><input class="edit-input edit-venda${editado}" type="number" step="0.01" min="0" value="${vUnit !== null ? vUnit.toFixed(2) : ''}" oninput="onVendaEdit(${idx},this.value)" title="Edite o preço de venda"></td>`;
+      html += `<td class="td-total" id="rowTotal_${idx}">${vTotal !== null ? fmtUSD(vTotal) : '—'}</td>`;
+    } else {
+      html += `<td class="td-na">—</td><td class="td-na">—</td><td class="td-na" id="rowTotal_${idx}">—</td>`;
+    }
+
+    const prazoEditado = item._prazoEdit != null ? ' editado' : '';
+    html += `<td><input class="edit-input edit-prazo${prazoEditado}" type="number" min="0" step="1" value="${prazo || ''}" oninput="onPrazoEdit(${idx},this.value)" placeholder="—"></td>`;
+    html += `</tr>`;
+  }
+
+  if (filtroAtivo === 'todos' && paginaAtual === totalPags) {
+    const { custo, venda } = calcularTotaisGlobal(r);
+    html += `<tr class="tr-total">`;
+    html += `<td colspan="6" class="td-total-label">TOTAL:</td>`;
+    html += `<td class="td-total-custo">${fmtUSD(custo)}</td>`;
+    html += `<td class="td-total-venda">${fmtUSD(venda)}</td>`;
+    html += `<td class="td-total-final">${fmtUSD(venda)}</td>`;
+    html += `<td></td></tr>`;
+  }
+
+  html += '</tbody>';
+  tbl.innerHTML = html;
+  renderPaginacao(totalPags, total, ini, fim);
+}
+
+function renderPaginacao(totalPags, total, ini, fim) {
+  const pagBar = document.getElementById('pagBar');
+  if (totalPags <= 1) { pagBar.classList.remove('show'); return; }
+
+  pagBar.classList.add('show');
+  document.getElementById('pagInfo').innerHTML = `<strong>${ini+1}–${fim}</strong> de <strong>${total}</strong> | página <strong>${paginaAtual}</strong> de <strong>${totalPags}</strong>`;
+
+  let btns = `<button class="pag-btn" onclick="irPag(1)" ${paginaAtual===1?'disabled':''}>«</button>`;
+  btns += `<button class="pag-btn" onclick="irPag(${paginaAtual-1})" ${paginaAtual===1?'disabled':''}>‹</button>`;
+
+  const janela = [];
+  for (let p = Math.max(1, paginaAtual-2); p <= Math.min(totalPags, paginaAtual+2); p++) janela.push(p);
+  if (janela[0] > 1) btns += `<span class="pag-dots">…</span>`;
+  for (const p of janela) btns += `<button class="pag-btn ${p===paginaAtual?'active':''}" onclick="irPag(${p})">${p}</button>`;
+  if (janela[janela.length-1] < totalPags) btns += `<span class="pag-dots">…</span>`;
+
+  btns += `<button class="pag-btn" onclick="irPag(${paginaAtual+1})" ${paginaAtual===totalPags?'disabled':''}>›</button>`;
+  btns += `<button class="pag-btn" onclick="irPag(${totalPags})" ${paginaAtual===totalPags?'disabled':''}>»</button>`;
+  document.getElementById('pagBtns').innerHTML = btns;
+}
+
+// ── Renderização principal ──
+
+function renderizar(r) {
+  const badge = document.getElementById('outBadge');
+  const temAtencao = r.itens.some(i => i.status === 'atencao');
+  badge.textContent = temAtencao ? '⚠ REQUER CONFIRMAÇÃO' : '✓ PRONTO';
+  badge.style.background = temAtencao ? 'var(--orange)' : 'var(--green)';
+
+  const cotBar = document.getElementById('cotBar');
+  const cl = esc(document.getElementById('cliente').value);
+  const cn = esc(document.getElementById('cotNum').value);
+  const cd = esc(document.getElementById('cotData').value);
+  const margem = getMargem();
+
+  cotBar.innerHTML = '';
+  if (cl) cotBar.innerHTML += `<div class="cot-f"><span>CLIENTE</span>${cl}</div>`;
+  if (cn) cotBar.innerHTML += `<div class="cot-f"><span>Nº COTAÇÃO</span>${cn}</div>`;
+  if (cd) cotBar.innerHTML += `<div class="cot-f"><span>DATA</span>${cd}</div>`;
+  cotBar.innerHTML += `<div class="cot-f"><span>ITENS</span>${r.itens.length}</div>`;
+  if (margem > 0) cotBar.innerHTML += `<div class="cot-f green"><span>MARGEM</span>${margem}%</div>`;
+
+  const cnt = { todos: r.itens.length, atencao: 0, assumido: 0, nao_encontrado: 0, ok: 0 };
+  r.itens.forEach(i => { if (cnt[i.status] !== undefined) cnt[i.status]++; });
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    const f = btn.getAttribute('onclick').match(/'(\w+)'/)[1];
+    btn.textContent = btn.textContent.replace(/\s*\(\d+\)$/, '') + ` (${cnt[f] ?? cnt.todos})`;
+  });
+
+  paginaAtual = 1; filtroAtivo = 'todos';
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.filter-btn').classList.add('active');
+  renderTabela(r);
+
+  const temPreco = r.itens.some(i => Object.keys(i.precos || {}).length > 0);
+  document.getElementById('totBar').style.display = temPreco ? 'flex' : 'none';
+  if (temPreco) {
+    const { custo, venda } = calcularTotaisGlobal(r);
+    const total = margem > 0 ? venda : custo;
+    document.getElementById('totVal').textContent = fmtUSD(parseFloat(total.toFixed(2))) + (margem > 0 ? ' (venda)' : ' (custo)');
+    const maxPrazo = Math.max(...r.itens.map(i => getItemPrazo(i) || 0), 0);
+    document.getElementById('totPrazo').textContent = maxPrazo > 0 ? maxPrazo + ' DIAS' : '—';
+    document.getElementById('totValidade').textContent = `Validade: ${document.getElementById('validade').value || '5'} dias úteis`;
+  }
+
+  const pends = r.itens.filter(i => i.obs && (i.status === 'atencao' || i.status === 'assumido'))
+    .map(i => `• ${i.descCompleta || i.orig}: ${i.obs}`).join('\n');
+  document.getElementById('pendBox').style.display = pends ? 'block' : 'none';
+  if (pends) document.getElementById('pendTxt').textContent = pends;
+
+  document.getElementById('outBox').classList.add('show');
+  document.getElementById('outBox').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  atualizarCacheUI();
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   7. LEITURA DE ARQUIVOS
+   ═══════════════════════════════════════════════════════ */
+
+function lerXlsx(file, cb) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+      cb(null, XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' }));
+    } catch (err) { cb(err); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+const KW_PRODUTO = /curva|flange|reducao|redução|nipple|niple|coupling|luva|union|uniao|\bte\b|\btee\b|elbow|cotovelo|joelho|\bcap\b|weld|slip|blind|a105|wpb|wphy|a234|a182|a403|inox|316|304|sch\s*\d|xs\b|xxs\b|std\b|\d+["\s]|poleg/i;
+const KW_HEADER  = /produto|product|item|preco|price|valor|unit|custo|dn\b|diametro|material|norma|sch|schedule/i;
+
+function lerPedido(file) {
+  if (!file) return;
+  lerXlsx(file, (err, json) => {
+    if (err) { mostrarErro('Erro ao ler pedido: ' + err.message); return; }
+    if (!json || !json.length) { mostrarErro('Arquivo vazio ou inválido.'); return; }
+
+    let linhasTexto = [], estrategia = '?';
+
+    // Estratégia A: coluna "descrição"
+    let colDesc = -1, colQtd = -1, headerRow = -1;
+    busca: for (let i = 0; i < Math.min(json.length, 30); i++) {
+      const row = json[i]; if (!row || !row.length) continue;
+      for (let j = 0; j < row.length; j++) {
+        const v = norm(String(row[j] != null ? row[j] : ''));
+        if (v.includes('descri') || v === 'produto' || v === 'especificacao' || v === 'material') {
+          const next = json[i + 1];
+          if (next && next[j] && String(next[j]).trim().length > 3) {
+            headerRow = i; colDesc = j;
+            for (let k = 0; k < row.length; k++) {
+              const vk = norm(String(row[k] != null ? row[k] : ''));
+              if (vk.includes('qtd') || vk.includes('quant')) { colQtd = k; break; }
+            }
+            break busca;
+          }
+        }
+      }
+    }
+    if (headerRow >= 0 && colDesc >= 0) {
+      estrategia = 'A';
+      for (let i = headerRow + 1; i < json.length; i++) {
+        const row = json[i]; if (!row) continue;
+        const desc = String(row[colDesc] != null ? row[colDesc] : '').trim();
+        if (!desc || desc.length < 3) continue;
+        if (/^[■●▪►\-─=]{0,3}\s*(legenda|total:|cliente:|data:|pedido|obra:|solicit|observa)/i.test(desc)) continue;
+        const qtd = colQtd >= 0 ? parseInt(String(row[colQtd] || '')) : NaN;
+        linhasTexto.push(desc + (qtd > 1 && qtd < 9999 ? ' x' + qtd : ''));
+      }
+    }
+
+    // Estratégia B: keywords industriais
+    if (linhasTexto.length < 3) {
+      estrategia = 'B'; linhasTexto = [];
+      for (let i = 0; i < json.length; i++) {
+        const row = json[i]; if (!row) continue;
+        for (let j = 0; j < row.length; j++) {
+          const v = String(row[j] != null ? row[j] : '').trim();
+          if (v.length < 4) continue;
+          if (KW_PRODUTO.test(v)) {
+            let qtd = NaN;
+            for (let k = 0; k < row.length; k++) { if (k === j) continue; const n = parseInt(String(row[k] || '')); if (!isNaN(n) && n > 0 && n < 9999) { qtd = n; break; } }
+            linhasTexto.push(v + (qtd > 1 ? ' x' + qtd : '')); break;
+          }
+        }
+      }
+    }
+
+    // Estratégia C: texto longo (≥12 chars)
+    if (linhasTexto.length < 3) {
+      estrategia = 'C'; linhasTexto = [];
+      const SKIP = /^(#|item|nº|descri|produto|legenda|total|cliente|data|pedido|obra|solicit|quant|unid|tag|obs|cod|fornec|preco|valor)/i;
+      for (let i = 0; i < json.length; i++) {
+        const row = json[i]; if (!row) continue;
+        const cells = row.map(c => String(c != null ? c : '').trim()).filter(c => c.length >= 12 && !SKIP.test(c) && !/^[\d\s,.$R%]+$/.test(c));
+        if (cells.length) linhasTexto.push(cells.reduce((a, b) => a.length >= b.length ? a : b, ''));
+      }
+    }
+
+    pedidoXlsTxt = linhasTexto.join('\n');
+    const ok = linhasTexto.length > 0;
+    document.getElementById('pedZone').style.display = 'none';
+    document.getElementById('pedNome').textContent = ok
+      ? '✓ ' + file.name + ' — ' + linhasTexto.length + ' itens [estratégia ' + estrategia + ']'
+      : '⚠ ' + file.name + ' — nenhum item detectado';
+    document.getElementById('pedNome').style.color = ok ? 'var(--green)' : 'var(--red)';
+    document.getElementById('pedOk').classList.add('show');
+    if (!ok) mostrarErro('Planilha lida mas nenhum item identificado.');
+
+    // Preview
+    const tbl = document.getElementById('pedTable'); tbl.innerHTML = '';
+    const thead = document.createElement('thead'), htr = document.createElement('tr');
+    ['#', 'Texto extraído'].forEach(t => { const th = document.createElement('th'); th.textContent = t; htr.appendChild(th); });
+    thead.appendChild(htr); tbl.appendChild(thead);
+    const tbody = document.createElement('tbody');
+    linhasTexto.slice(0, 20).forEach((txt, i) => {
+      const tr = document.createElement('tr');
+      [i + 1, txt].forEach(v => { const td = document.createElement('td'); td.textContent = String(v); tr.appendChild(td); });
+      tbody.appendChild(tr);
+    });
+    if (linhasTexto.length > 20) {
+      const tr = document.createElement('tr'), td = document.createElement('td');
+      td.colSpan = 2; td.textContent = '... e mais ' + (linhasTexto.length - 20) + ' itens';
+      td.className = 'td-na'; td.style.textAlign = 'center'; td.style.fontStyle = 'italic';
+      tr.appendChild(td); tbody.appendChild(tr);
+    }
+    tbl.appendChild(tbody);
+  });
+}
+
+function limparPedido() {
+  pedidoXlsTxt = '';
+  document.getElementById('pedFile').value = '';
+  document.getElementById('pedZone').style.display = '';
+  document.getElementById('pedOk').classList.remove('show');
+}
+
+function lerForn(idx, file) {
+  if (!file) return;
+  lerXlsx(file, (err, json) => {
+    if (err) { mostrarErro('Erro ao ler fornecedor: ' + err.message); return; }
+    if (!json.length) return;
+
+    let headerRow = 0;
+    for (let i = 0; i < Math.min(json.length, 10); i++) {
+      if (json[i].filter(c => KW_HEADER.test(String(c || ''))).length >= 2) { headerRow = i; break; }
+    }
+
+    const headers = json[headerRow].map(h => String(h || ''));
+    const linhas = json.slice(headerRow + 1).filter(r => r.some(c => c !== '' && c !== null && c !== undefined));
+    const nome = file.name.replace(/\.[^/.]+$/, '');
+
+    // Constrói índice de códigos: código normalizado → índice da linha
+    const codigoIndex = {};
+    const codHeaders = /codigo|code|part|ref|pn|sku|catalogo|item\s*n|cod\b/i;
+    const colCod = headers.findIndex(h => codHeaders.test(norm(h)));
+    if (colCod >= 0) {
+      linhas.forEach((row, i) => {
+        const cod = String(row[colCod] || '').trim();
+        if (cod && cod.length >= 2 && !/^\d+$/.test(cod)) { // ignora números puros (são sequenciais, não códigos)
+          codigoIndex[cod.toUpperCase().replace(/\s+/g, '')] = i;
+        }
+      });
+    }
+
+    const codCount = Object.keys(codigoIndex).length;
+    fornecedor[idx] = { nome, headers, linhas, codigoIndex };
+
+    const codMsg = colCod >= 0
+      ? (codCount > 0 ? ' · ' + codCount + ' códigos indexados' : ' · coluna "' + headers[colCod] + '" sem códigos válidos')
+      : ' · sem coluna de código detectada';
+
+    const slot = document.getElementById('fs' + idx);
+    slot.classList.add('loaded'); slot.onclick = null;
+    slot.innerHTML = `<span class="forn-x" onclick="limparForn(${idx});event.stopPropagation()">✕</span>
+      <div class="forn-ico">✅</div>
+      <input class="forn-name-input" value="${nome}" oninput="fornecedor[${idx}].nome=this.value" onclick="event.stopPropagation()" placeholder="Nome">
+      <div class="forn-count">${linhas.length} itens carregados${codMsg}</div>`;
+
+    atualizarCacheUI();
+  });
+}
+
+function limparForn(idx) {
+  fornecedor[idx] = { nome: '', linhas: [], headers: [] };
+  document.getElementById('ff0').value = '';
+  const slot = document.getElementById('fs0');
+  slot.classList.remove('loaded');
+  slot.onclick = () => document.getElementById('ff0').click();
+  slot.innerHTML = `<div class="forn-ico">📊</div><div class="forn-lbl">TABELA DO FORNECEDOR</div><div class="forn-hint">Clique ou arraste · .xlsx · .xls · .csv</div>`;
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   8. EXPORTAÇÃO
+   ═══════════════════════════════════════════════════════ */
+
+function baixarExcel() {
+  if (!resultFinal) return;
+  const r = resultFinal;
+  const cl = document.getElementById('cliente').value || '—';
+  const cn = document.getElementById('cotNum').value || '—';
+  const cd = document.getElementById('cotData').value || new Date().toLocaleDateString('pt-BR');
+  const val = document.getElementById('validade').value || '5';
+  const margem = getMargem();
+  const wb = XLSX.utils.book_new();
+
+  // ═══ ABA 1: INTERNO (visão completa com custo + venda) ═══
+  const ws = XLSX.utils.aoa_to_sheet([]);
+
+  // Cabeçalho de info (linhas 1-4)
+  XLSX.utils.sheet_add_aoa(ws, [
+    ['COTAÇÃO INTERNA'],
+    [],
+    ['Cliente:', cl, '', 'Cotação:', cn, '', 'Data:', cd],
+    ['Margem:', margem > 0 ? margem + '%' : 'Sem margem', '', 'Validade:', val + ' dias', '', 'Fornecedor:', fornecedor[0]?.nome || '—'],
+    []
+  ], { origin: 'A1' });
+
+  // Merge do título
+  ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 7 } }];
+
+  // Tabela de dados (a partir da linha 6)
+  const headerRow = ['#', 'Descrição do Pedido', 'Especificação Técnica', 'Cód Fornecedor',
+    'Qtd', 'Custo Unit (USD)', 'P.Venda Unit (USD)', 'Custo Total', 'Venda Total',
+    'Prazo (dias)', 'Confiança', 'Status', 'Observações'];
+
+  XLSX.utils.sheet_add_aoa(ws, [headerRow], { origin: 'A6' });
+
+  let totalCusto = 0, totalVenda = 0;
+  let comPreco = 0, semPreco = 0;
+
+  r.itens.forEach((item, i) => {
+    const custo = getCustoUnit(item);
+    const vUnit = getVendaUnit(item);
+    const ct = custo ? parseFloat((custo * (item.qtd || 1)).toFixed(2)) : null;
+    const vt = vUnit ? parseFloat((vUnit * (item.qtd || 1)).toFixed(2)) : null;
+    const p = item.melhorForn && item.precos && item.precos[item.melhorForn];
+    const conf = p ? Math.round(p.conf * 100) : null;
+
+    if (ct) totalCusto += ct;
+    if (vt) totalVenda += vt;
+    if (custo) comPreco++; else semPreco++;
+
+    const row = [
+      i + 1,
+      item.orig,
+      item.descCompleta,
+      getPartNum(item) || '',
+      item.qtd || '',
+      custo || '',
+      vUnit ? parseFloat(vUnit.toFixed(2)) : '',
+      ct || '',
+      vt || '',
+      getItemPrazo(item) || '',
+      conf ? conf + '%' : '',
+      item.status.toUpperCase(),
+      item.obs || ''
+    ];
+
+    XLSX.utils.sheet_add_aoa(ws, [row], { origin: 'A' + (7 + i) });
+  });
+
+  // Linha de totais
+  const totalRow = 7 + r.itens.length + 1;
+  XLSX.utils.sheet_add_aoa(ws, [
+    [],
+    ['', '', '', '', 'TOTAIS:', '', '', parseFloat(totalCusto.toFixed(2)), parseFloat(totalVenda.toFixed(2))],
+    [],
+    ['RESUMO'],
+    ['Itens processados:', r.itens.length],
+    ['Com preço:', comPreco],
+    ['Sem preço / N.A.:', semPreco],
+    ['Margem aplicada:', margem > 0 ? margem + '%' : 'Nenhuma'],
+    ['Gerado em:', new Date().toLocaleString('pt-BR')],
+  ], { origin: 'A' + totalRow });
+
+  // Largura das colunas
+  ws['!cols'] = [
+    { wch: 4 },   // #
+    { wch: 32 },  // Descrição Pedido
+    { wch: 38 },  // Especificação
+    { wch: 16 },  // Cód Fornecedor
+    { wch: 6 },   // Qtd
+    { wch: 14 },  // Custo Unit
+    { wch: 14 },  // P.Venda Unit
+    { wch: 14 },  // Custo Total
+    { wch: 14 },  // Venda Total
+    { wch: 10 },  // Prazo
+    { wch: 10 },  // Confiança
+    { wch: 12 },  // Status
+    { wch: 40 },  // Observações
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Interno');
+
+  // ═══ ABA 2: PROPOSTA CLIENTE (versão limpa sem custo) ═══
+  const wsc = XLSX.utils.aoa_to_sheet([]);
+
+  XLSX.utils.sheet_add_aoa(wsc, [
+    ['PROPOSTA COMERCIAL'],
+    [],
+    ['Cliente:', cl, '', 'Cotação:', cn, '', 'Data:', cd],
+    []
+  ], { origin: 'A1' });
+
+  wsc['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 7 } }];
+
+  // Tabela
+  XLSX.utils.sheet_add_aoa(wsc, [
+    ['#', 'Cód', 'Descrição Técnica', 'Qtd', 'Un', 'Preço Unit (USD)', 'Total (USD)', 'Prazo (dias)']
+  ], { origin: 'A5' });
+
+  let totalVC = 0;
+  r.itens.forEach((item, i) => {
+    const v = getVendaUnit(item);
+    const vt = v ? parseFloat((v * (item.qtd || 1)).toFixed(2)) : null;
+    if (vt) totalVC += vt;
+
+    XLSX.utils.sheet_add_aoa(wsc, [[
+      i + 1,
+      getPartNum(item) || '',
+      item.descCompleta || item.orig,
+      item.qtd || '',
+      'PC',
+      v ? parseFloat(v.toFixed(2)) : 'A COTAR',
+      vt || '',
+      getItemPrazo(item) || ''
+    ]], { origin: 'A' + (6 + i) });
+  });
+
+  const totalRowC = 6 + r.itens.length + 1;
+  XLSX.utils.sheet_add_aoa(wsc, [
+    [],
+    ['', '', '', '', '', 'TOTAL:', parseFloat(totalVC.toFixed(2))],
+    [],
+    ['Validade:', val + ' dias úteis', '', 'Pagamento:', 'A combinar', 'Preços em:', 'USD'],
+    ['Materiais sujeitos à disponibilidade. Não inclui frete, impostos ou taxas alfandegárias.']
+  ], { origin: 'A' + totalRowC });
+
+  wsc['!cols'] = [
+    { wch: 4 },   // #
+    { wch: 16 },  // Cód
+    { wch: 48 },  // Descrição
+    { wch: 6 },   // Qtd
+    { wch: 5 },   // Un
+    { wch: 16 },  // Preço Unit
+    { wch: 16 },  // Total
+    { wch: 10 },  // Prazo
+  ];
+
+  XLSX.utils.book_append_sheet(wb, wsc, 'Proposta Cliente');
+
+  XLSX.writeFile(wb, `cotacao${cn !== '—' ? '_' + cn : ''}_${cl.replace(/\s/g, '_')}.xlsx`);
+}
+
+/** Template HTML da proposta para o cliente (janela de impressão) */
+function buildPropostaHTML(cl, cn, cd, val, rows, totalVenda) {
+  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<title>Proposta ${cn}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:30px 40px}
+h1{font-size:20px;font-weight:900;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px}
+.info-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px;padding:12px 16px;background:#f8f8f8;border-radius:6px;border:1px solid #e0e0e0}
+.info-grid div label{display:block;font-size:9px;text-transform:uppercase;color:#999;letter-spacing:1px;margin-bottom:2px}
+.info-grid div span{font-size:13px;font-weight:700}
+table{width:100%;border-collapse:collapse;margin-bottom:16px}
+thead tr{background:#1a1a1a;color:#fff}
+thead th{padding:7px 10px;text-align:left;font-size:10px;letter-spacing:1px;text-transform:uppercase}
+tbody tr:nth-child(even){background:#f9f9f9}
+tbody td{padding:7px 10px;border-bottom:1px solid #eee;vertical-align:top}
+tfoot tr{background:#1a1a1a;color:#fff;font-weight:700;font-size:13px}
+tfoot td{padding:10px}
+.terms{margin-top:12px;padding:12px 16px;background:#f8f8f8;border-radius:6px;border:1px solid #e0e0e0;font-size:10px;color:#555;line-height:1.8}
+.terms strong{color:#333}
+.footer{margin-top:20px;text-align:center;font-size:9px;color:#aaa;border-top:1px solid #eee;padding-top:10px}
+@media print{body{padding:15px 25px}.no-print{display:none}@page{margin:1.5cm}}
+</style></head><body>
+<div class="no-print" style="margin-bottom:16px;display:flex;gap:8px">
+  <button onclick="window.print()" style="background:#1a1a1a;color:#fff;border:none;padding:8px 20px;border-radius:5px;font-size:13px;font-weight:700;cursor:pointer">🖨 Imprimir / Salvar PDF</button>
+  <button onclick="window.close()" style="background:#eee;border:none;padding:8px 16px;border-radius:5px;cursor:pointer">Fechar</button>
+</div>
+<h1>Proposta Comercial</h1>
+<div class="info-grid">
+  <div><label>Cliente</label><span>${cl}</span></div>
+  <div><label>Nº Cotação</label><span>${cn}</span></div>
+  <div><label>Data</label><span>${cd}</span></div>
+</div>
+<table>
+<thead><tr><th>#</th><th>Descrição Técnica</th><th>Qtd</th><th>Un</th><th>Preço Unit</th><th>Total</th><th>Prazo</th></tr></thead>
+<tbody>${rows}</tbody>
+<tfoot><tr><td colspan="5" style="text-align:right;letter-spacing:1px;font-size:10px">TOTAL GERAL</td><td style="text-align:right;font-size:16px">${fmtUSD(totalVenda)}</td><td></td></tr></tfoot>
+</table>
+<div class="terms">
+  <strong>Condições comerciais:</strong><br>
+  Validade da proposta: <strong>${val} dias úteis</strong> &nbsp;|&nbsp;
+  Preços em USD (dólar americano) &nbsp;|&nbsp; Pagamento: a combinar<br>
+  Materiais sujeitos à disponibilidade em estoque. Proposta não inclui frete, impostos ou taxas alfandegárias.
+</div>
+<div class="footer">Documento gerado automaticamente · ${new Date().toLocaleString('pt-BR')}</div>
+</body></html>`;
+}
+
+function gerarPropostaCliente() {
+  if (!resultFinal || !resultFinal.itens.length) { mostrarErro('Gere a proposta antes.'); return; }
+  const r = resultFinal;
+  const cl = esc(document.getElementById('cliente').value || '—');
+  const cn = esc(document.getElementById('cotNum').value || '—');
+  const cd = esc(document.getElementById('cotData').value || new Date().toLocaleDateString('pt-BR'));
+  const val = document.getElementById('validade').value || '5';
+
+  let rows = '', totalVenda = 0;
+  r.itens.forEach((item, i) => {
+    const v = getVendaUnit(item);
+    const tot = v !== null ? parseFloat((v * (item.qtd || 1)).toFixed(2)) : null;
+    if (tot) totalVenda += tot;
+    const prazo = getItemPrazo(item), cod = getPartNum(item);
+    const aviso = item.status === 'atencao' ? `<div style="font-size:9px;color:#c45b00;margin-top:2px">⚠ ${esc(item.obs||'')}</div>` : '';
+    rows += `<tr>
+      <td style="text-align:center">${i+1}</td>
+      <td>${cod?'<span style="font-size:9px;color:#666">['+esc(cod)+']</span> ':''}${esc(item.descCompleta||item.orig)}${aviso}</td>
+      <td style="text-align:center">${item.qtd||'?'}</td><td style="text-align:center">PC</td>
+      <td style="text-align:right">${v!==null?fmtUSD(v):'A COTAR'}</td>
+      <td style="text-align:right;font-weight:700">${tot!==null?fmtUSD(tot):'—'}</td>
+      <td style="text-align:center">${prazo?prazo+' dias':'—'}</td>
+    </tr>`;
+  });
+
+  const win = window.open('', '_blank', 'width=900,height=700');
+  win.document.write(buildPropostaHTML(cl, cn, cd, val, rows, totalVenda));
+  win.document.close();
+}
+
+function exportarProtheus(e) {
+  if (!resultFinal || !resultFinal.itens.length) { mostrarErro('Gere a proposta antes.'); return; }
+  const r = resultFinal;
+  const cl = document.getElementById('cliente').value, cn = document.getElementById('cotNum').value;
+  const cd = document.getElementById('cotData').value || new Date().toLocaleDateString('pt-BR');
+  const filial = document.getElementById('pt_filial').value||'001', codCli = document.getElementById('pt_cliente').value||'';
+  const loja = document.getElementById('pt_loja').value||'01', condpag = document.getElementById('pt_condpag').value||'000';
+  const tipo = document.getElementById('pt_tipo').value||'N', tes = document.getElementById('pt_tes').value||'501';
+  const moeda = document.getElementById('pt_moeda').value||'1';
+  const dataEmissao = cd.includes('/') ? cd.split('/').reverse().join('') : cd.replace(/\D/g, '');
+  const wb = XLSX.utils.book_new();
+
+  const wsSC5 = XLSX.utils.aoa_to_sheet([
+    ['C5_FILIAL','C5_NUM','C5_TIPO','C5_CLIENTE','C5_LOJACLI','C5_EMISSAO','C5_CONDPAG','C5_MOEDA','C5_MENNOTA','C5_DESCRI'],
+    [filial,'',tipo,codCli,loja,dataEmissao,condpag,moeda,`Cotacao ${cn}`,`Cliente: ${cl}`]
+  ]);
+  wsSC5['!cols'] = [{wch:10},{wch:8},{wch:6},{wch:10},{wch:8},{wch:10},{wch:10},{wch:6},{wch:20},{wch:30}];
+  XLSX.utils.book_append_sheet(wb, wsSC5, 'SC5 - Cabecalho');
+
+  const sc6 = [['C6_FILIAL','C6_NUM','C6_ITEM','C6_PRODUTO','C6_DESCRI','C6_QTDVEN','C6_PRCVEN','C6_TOTAL','C6_ENTREG','C6_TES','C6_UM','C6_LOCAL','C6_OBSERV']];
+  const maxPrazo = Math.max(...r.itens.map(i => getItemPrazo(i)||30), 30);
+  const dtFallback = new Date(); dtFallback.setDate(dtFallback.getDate() + maxPrazo);
+  const dtFallbackStr = dtFallback.toLocaleDateString('pt-BR').split('/').reverse().join('');
+
+  let itemNum = 1;
+  r.itens.forEach(item => {
+    const v = getVendaUnit(item); if (v === null) return;
+    const qtd = item.qtd||1, prc = parseFloat(v.toFixed(2)), prazo = getItemPrazo(item);
+    const dt = prazo ? (()=>{const d=new Date();d.setDate(d.getDate()+prazo);return d.toLocaleDateString('pt-BR').split('/').reverse().join('');})() : dtFallbackStr;
+    sc6.push([filial,'',String(itemNum++).padStart(2,'0'),getPartNum(item),item.descCompleta||item.orig,qtd,prc,parseFloat((prc*qtd).toFixed(2)),dt,tes,'PC','01',item.obs||'']);
+  });
+  const wsSC6 = XLSX.utils.aoa_to_sheet(sc6);
+  wsSC6['!cols'] = [{wch:8},{wch:8},{wch:6},{wch:14},{wch:48},{wch:8},{wch:12},{wch:12},{wch:10},{wch:6},{wch:5},{wch:7},{wch:30}];
+  XLSX.utils.book_append_sheet(wb, wsSC6, 'SC6 - Itens');
+
+  const wsInst = XLSX.utils.aoa_to_sheet([
+    ['INSTRUÇÕES DE IMPORTAÇÃO NO PROTHEUS'],[''],
+    ['Passo 1:','Abra o Protheus: Faturamento > Atualizações > Pedidos de Venda'],
+    ['Passo 2:','Use a função "Importar" ou o programa MATA410'],
+    ['Passo 3:','Selecione esta planilha — abas SC5 e SC6'],
+    ['Passo 4:','Verifique C6_PRODUTO — preencha com código interno se não usou Part#'],
+    ['Passo 5:','Confirme e verifique os pedidos gerados'],[''],
+    ['ATENÇÃO:'],['- C6_PRODUTO deve ser o código do produto no Protheus'],
+    ['- C5_NUM é preenchido automaticamente'],['- TES padrão:',tes],['- Moeda:',moeda,'(1=BRL, 2=USD)'],[''],
+    ['Gerado em:',new Date().toLocaleString('pt-BR'),'Cotação:',cn,'Cliente:',cl],
+  ]);
+  wsInst['!cols'] = [{wch:12},{wch:60},{wch:20},{wch:15},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, wsInst, 'Instrucoes');
+  XLSX.writeFile(wb, `protheus_${cn||'cotacao'}_${(cl||'cliente').replace(/\s/g,'_')}.xlsx`);
+
+  const btn = e.currentTarget, orig = btn.textContent;
+  btn.textContent = '✅ Baixado!'; setTimeout(() => btn.textContent = orig, 2500);
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   9. HELPERS DE UI
+   ═══════════════════════════════════════════════════════ */
+
+function switchTab(t) {
+  document.getElementById('tabTxt').classList[t === 'txt' ? 'add' : 'remove']('active');
+  document.getElementById('tabXls').classList[t === 'xls' ? 'add' : 'remove']('active');
+  document.getElementById('panelTxt').style.display = t === 'txt' ? 'block' : 'none';
+  document.getElementById('panelXls').style.display = t === 'xls' ? 'block' : 'none';
+}
+
+document.getElementById('protheusTrigger').addEventListener('click', function () {
+  const grid = document.getElementById('protheusGrid'), arrow = document.getElementById('protheusArrow');
+  const aberto = grid.style.display === 'grid';
+  grid.style.display = aberto ? 'none' : 'grid';
+  arrow.textContent = aberto ? '▼' : '▲';
+});
+
+function handleDragOver(e, id) { e.preventDefault(); document.getElementById(id).classList.add('drag'); }
+function handleDragLeave(id) { document.getElementById(id).classList.remove('drag'); }
+function handleDropPedido(e) { e.preventDefault(); e.currentTarget.classList.remove('drag'); if (e.dataTransfer.files[0]) lerPedido(e.dataTransfer.files[0]); }
+function handleDropForn(e, idx) { e.preventDefault(); document.getElementById('fs'+idx).classList.remove('drag'); if (e.dataTransfer.files[0]) lerForn(idx, e.dataTransfer.files[0]); }
+
+function mostrarErro(msg) { const el = document.getElementById('errBox'); el.textContent = msg; el.classList.add('show'); }
+
+function novaProposta() {
+  document.getElementById('txtPedido').value = '';
+  document.getElementById('outBox').classList.remove('show');
+  document.getElementById('errBox').classList.remove('show');
+  document.getElementById('pendBox').style.display = 'none';
+  document.getElementById('totBar').style.display = 'none';
+  resultFinal = null; limparPedido();
+}
+</script>
+</body>
+</html>
